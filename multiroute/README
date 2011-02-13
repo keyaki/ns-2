@@ -1,0 +1,181 @@
+--------------------------------------------------
+ ns-2 マルチルートデータ転送拡張 (2009/01/21版)
+
+  Wada Laboratory, Shizuoka University
+  Takahiro Sugimoto <keyaki.no.kokage@gmail.com>
+
+  Last Modified: 2009/01/21 19:39:59
+--------------------------------------------------
+
+==================
+ プログラム概要
+==================
+
+  [マルチルート拡張版AODV]
+  　ns-2に標準で組み込まれているAODVエージェントを改変し、複数の経路を構築できる
+  ようにしたものです。
+
+  [UserData]
+  　ns-2上のUDPパケットに任意のデータを載せて通信させることができるアプリケーシ
+  ョンです。
+
+==================
+ ディレクトリ構成
+==================
+
+ /
+ +- README			-- このファイル
+ +- aodv/			-- マルチルート拡張版AODV
+ +- userdata/			-- データ転送アプリケーション (UserData)
+ |  +- userdata.{h, cc}		--  UserData メインコード
+ |  +- userdata_file.{h, cc}	--  UserData ファイルI/Oコード
+ +- scripts/			-- シミュレーション用スクリプト
+    +- demo.tcl			--  テスト用スクリプト	
+    +- demo.in			--  テストスクリプト用入力データ (BMP画像)
+    +- *.pl			--  ログ分析スクリプト
+
+==================
+ 開発環境
+==================
+
+ Fedora 8 (gcc4, i386-redhat-linux) + ns-2.32
+
+==================
+ 組み込み方法
+==================
+
+ [ UserData + マルチルート拡張AODV ] (連携ON)
+
+   1. ns-2のディレクトリ内にあるaodvディレクトリを削除します。
+   2. このアーカイブ内にあるaodvディレクトリ、userdataディレクトリをns-2のディレ
+      クトリにコピーします。
+   3. ./configure スクリプトを実行し、Makefileを生成します。
+   4. 生成ししたMakefileの「DEFINE」に
+        -DAODV_MULTIROUTE -DAODV_USERDATA_CONNECT
+      を、「OBJ_CC」に
+        userdata/userdata.o userdata/userdata_file.o \
+      を追加します。
+   5. makeします。
+
+ [ UserData + シングルルートAODV ] (連携ON)
+
+   1. ns-2のディレクトリ内にあるaodvディレクトリを削除します。
+   2. このアーカイブ内にあるaodvディレクトリ、userdataディレクトリをns-2のディレ
+      クトリにコピーします。
+   3. ./configure スクリプトを実行し、Makefileを生成します。
+   4. 生成ししたMakefileの「DEFINE」に
+        -DAODV_USERDATA_CONNECT
+      を、「OBJ_CC」に
+        userdata/userdata.o userdata/userdata_file.o \
+      を追加します。
+   5. makeします。
+
+ [ UserDataのみ ]
+
+   1. userdataディレクトリをns-2のディレクトリにコピーします。
+   2. ./configure スクリプトを実行し、Makefileを生成します。
+   3. 生成ししたMakefileの「OBJ_CC」に
+        userdata/userdata.o userdata/userdata_file.o \
+      を追加します。
+   4. makeします。
+
+　※ この場合、送信開始直後にパケットの大量ドロップが発生します。
+
+ [ マルチルート拡張AODVのみ ]
+
+   1. ns-2のディレクトリ内にあるaodvディレクトリを削除します。
+   2. このアーカイブ内にあるaodvディレクトリをns-2のディレクトリにコピーします。
+   3. ./configure スクリプトを実行し、Makefileを生成します。
+   4. 生成ししたMakefileの「DEFINE」に
+        -DAODV_MULTIROUTE
+      を追加します。
+   5. makeします。
+
+ [ シングルルートAODVのみ ]
+
+   1. ns-2のディレクトリ内にあるaodvディレクトリを削除します。
+   2. このアーカイブ内にあるaodvディレクトリをns-2のディレクトリにコピーします。
+   3. ./configure スクリプトを実行し、Makefileを生成します。
+   4. makeします。
+
+　※ 機能的にはns-2標準のAODVと同じ(はず)ですが、デバッグ出力が一部異なります。
+
+
+==================
+ 利用方法
+==================
+
+ ・具体例は script/demo.tcl を参考にしてください。
+
+ ・Application/UserData、UserDataFile、UserDataLogの引数は次の通りです。
+   [UserData]
+     set userdata [new Application/UserData]
+       --- 新たな UserDataApp インスタンス $userdata を生成します。
+     $userdata attach-agent <agent object>
+       --- Agent に $userdata をアタッチします。
+     $userdata attach-file-in <UserDataFile>
+       --- $userdata に UserDataFileオブジェクト <UserDataFile> を入力先としてア
+           タッチします。 
+     $userdata attach-file-out <UserDataFile>
+       --- $userdata に UserDataFileオブジェクト <UserDataFile> を出力先としてア
+           タッチします。
+     $userdata attach-file-sorted <UserDataFile>
+       --- $userdata に UserDataFileオブジェクト <UserDataFile> を並べ替え済出力
+           先としてアタッチします。
+     $userdata attach-log <UserDataLog>
+       --- $userdata に UserDataLogオブジェクト <UserDataLog> をログ出力先として
+           アタッチします。
+     $userdata set-interval <interval>
+       --- 送信間隔を <interval> に設定します。
+           設定しない場合には、userdata.hでDEFINEしたINTERVALの値になります。
+     $userdata start
+       --- 送信を開始/再開します。
+     $userdata wait 
+       --- 送信を中断します。
+     $userdata stop
+       --- 送信を終了します。attach-file-sortedされている場合にはここで並べ替え
+           済みデータの書き出しが行われます。
+
+     以下はAODV_MULTIROUTEを有効にしてコンパイルした場合のみ利用可能です。
+
+     $userdata attach-ragent <routing agent object>
+       --- $userdata にルーティングエージェントをアタッチします。
+     $userdata set-multiroute-scheme {round-robin|uniform|hop-weighted|clone}
+       --- 複数ルートへの割り当て方式を設定します。
+           round-robin  : 各経路を番号順に繰り替えして使用します。
+           uniform      : 各経路を等確率で選択して使用します。
+           hop-weighted : 短い経路に高い確率でパケットが割り当てられるようにして
+                          使用します。
+           clone        : 各経路に同一パケットをコピーして送信します。
+           short-only   : 経路の中で最も短いものだけを選択して送信します。
+
+   [UserDataFile]
+     set userfile [new UserDataFile]
+       --- 新たな UserDataFile インスタンス $userfile を生成します。
+      $userfile setfile <filename> <r/w>
+       --- ファイルと読み書きモードを設定します。
+      $userdata set-unitlen <length>
+       --- 一回に読むデータの長さ(＝パケットサイズ)を指定します。
+	
+   [UserDataLog]
+     set userlog [new UserDataLog]
+       --- 新たな UserDataLog インスタンス $userfile を生成します。
+     $userfile setfile <filename>
+       --- ファイルを指定します。
+
+==================
+ 備考
+==================
+
+ ・AODV_USERDATA_CONNECTなしの状態でUserDataを使用すると、送信開始直後のパケット
+ 　が大量にドロップする問題が発生します。
+ ・AODVのコードは修正BSDライセンスの適用を受けます。コード冒頭の著作権表示は削除
+ 　しないようにしてください。
+ ・テスト用データ(demo.in)の出典: http://sipi.usc.edu/database/index.html
+
+ ・「warning: no class variable UserDataFile::debug_」という表示が出ますが、動作
+ 　には支障ありません。気になるのであれば、ns-default.tclに次のように追記してく
+ 　ださい。
+ 　　 UserDataFile set debug_ false
+ 　　 UserDataLog set debug_ false
+
